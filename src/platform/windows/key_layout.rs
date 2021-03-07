@@ -1,12 +1,18 @@
+use std::convert::TryInto;
+
+/// The KeyLayout struct
 pub struct KeyLayout {}
 
 impl KeyLayout {
+    
+    /// Construct a KeyLayout
     pub fn new_from_window(_window: &winit::window::Window) -> Self {
         KeyLayout {}
     }
 
+    /// Convert a scancode to a String
     #[allow(unsafe_code)]
-    pub fn get_key_as_string(&self, scancode: &u32) -> String {
+    pub fn get_key_as_string(&self, scancode: u32) -> String {
         // Try withMapVirtualKeyW first (single character)
 
         // MapVirtualKeyW is safe as on failure, it returns 0 on failure
@@ -54,6 +60,7 @@ impl KeyLayout {
         String::from_utf16_lossy(utf_key)
     }
 
+    /// Construct a KeyLayout
     pub fn new() -> Self {
         KeyLayout {}
     }
