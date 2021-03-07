@@ -1,5 +1,5 @@
 [package]
-name = "keynames"
+name = "keyboard-keynames"
 version = "0.1.0"
 authors = ["Adam Blanchet <adamblanchet@free.fr>"]
 edition = "2018"
