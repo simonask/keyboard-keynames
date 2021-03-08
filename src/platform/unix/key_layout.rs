@@ -47,12 +47,12 @@ impl Display for KeyLayoutError {
 }
 
 impl KeyLayout {
-    /// Construct a KeyLayout
-    pub fn new_from_window(window: &winit::window::Window) -> Result<Self, KeyLayoutError> {
+    /// Construct a KeyLayout from a Winit window
+    pub fn new_from_window(window: &winit::window::Window) -> Result<KeyLayout, KeyLayoutError> {
         if let Some(_conn) = winit::platform::unix::WindowExtUnix::xcb_connection(window) {
-            Self::new_x11()
+            Self::_new_x11()
         } else {
-            Self::new_wayland()
+            Self::_new_wayland()
         }
     }
 
@@ -80,7 +80,7 @@ impl KeyLayout {
         output
     }
 
-    fn new_wayland() -> Result<Self, KeyLayoutError> {
+    fn _new_wayland() -> Result<Self, KeyLayoutError> {
         // We try Wayland
 
         let display = wayland_client::Display::connect_to_env().unwrap();
@@ -201,7 +201,7 @@ impl KeyLayout {
         Ok(Self { keymap })
     }
 
-    fn new_x11() -> Result<Self, KeyLayoutError> {
+    fn _new_x11() -> Result<Self, KeyLayoutError> {
         let (conn, _) = xcb::base::Connection::connect(None).unwrap();
         let mut major_xkb_version_out = 0;
         let mut minor_xkb_version_out = 0;
@@ -230,14 +230,38 @@ impl KeyLayout {
 
     /// Construct a KeyLayout
     /// Tries to autodetect the session type using the XDG_SESSION_TYPE environment variable
-    pub fn new() -> Result<Self, KeyLayoutError> {
+    pub fn new() -> Result<KeyLayout, KeyLayoutError> {
         match env::var("XDG_SESSION_TYPE") {
             Ok(session_type) => match session_type.as_str() {
-                "wayland" => Self::new_wayland(),
-                "x11" => Self::new_x11(),
+                "wayland" => Self::_new_wayland(),
+                "x11" => Self::_new_x11(),
                 _ => Err(KeyLayoutError::SessionError),
             },
             Err(_e) => Err(KeyLayoutError::SessionError),
         }
     }
+}
+
+/// Methods for KeyLayout specific to Unix-based systems
+#[cfg(target_os = "linux")]
+pub trait KeyLayoutExtUnix {
+
+    /// Construct a KeyLayout explicitly using the Wayland protocol
+    fn new_wayland () -> Result<KeyLayout, KeyLayoutError>;
+
+    /// Construct a KeyLayout explicitly using the X11 protocol
+    fn new_x11() -> Result<KeyLayout, KeyLayoutError>;
+
+}
+
+impl KeyLayoutExtUnix for KeyLayout {
+
+    fn new_wayland() -> Result<KeyLayout, KeyLayoutError> {
+        Self::_new_wayland()
+    }
+
+    fn new_x11() -> Result<KeyLayout, KeyLayoutError> {
+        Self::_new_x11()
+    }
+
 }

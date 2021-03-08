@@ -5,7 +5,7 @@ pub struct KeyLayout {}
 
 impl KeyLayout {
     
-    /// Construct a KeyLayout
+    /// Construct a KeyLayout from a winit Window
     pub fn new_from_window(_window: &winit::window::Window) -> Self {
         KeyLayout {}
     }
