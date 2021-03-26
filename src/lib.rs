@@ -10,10 +10,7 @@ mod tests {
     }
 }
 
-#[cfg(target_os = "windows")]
-#[path = "platform/mod.rs"]
-pub mod key_layout;
+pub mod errors;
 
-#[cfg(target_os = "linux")]
 #[path = "platform/mod.rs"]
 pub mod key_layout;

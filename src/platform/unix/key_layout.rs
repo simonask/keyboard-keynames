@@ -2,8 +2,6 @@ use std::{cell::RefCell, rc::Rc};
 use std::{
     convert::TryInto,
     env,
-    error::Error,
-    fmt::{self, Display},
 };
 use wayland_client::{
     protocol::{
@@ -17,34 +15,13 @@ use xkbcommon::xkb;
 
 use xkbcommon::xkb::{KEYMAP_COMPILE_NO_FLAGS, KEYMAP_FORMAT_TEXT_V1};
 
+use crate::errors::KeyLayoutError;
+
 /// The KeyLayout struct
 pub struct KeyLayout {
     keymap: xkb::Keymap,
 }
 
-/// Errors during creation of a KeyLayout
-#[derive(Debug)]
-pub enum KeyLayoutError {
-    /// An error with Wayland
-    WaylandError,
-    /// An error with X11
-    X11Error,
-    /// An error determining the session type
-    SessionError,
-}
-
-impl Error for KeyLayoutError {}
-impl Display for KeyLayoutError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            KeyLayoutError::WaylandError => {
-                write!(f, "Error getting KeyLayout from Wayland compositor")
-            }
-            KeyLayoutError::X11Error => write!(f, "Error getting KeyLayout from X11 server"),
-            KeyLayoutError::SessionError => write!(f, "Error getting XDG_SESSION_TYPE"),
-        }
-    }
-}
 
 impl KeyLayout {
     /// Construct a KeyLayout from a Winit window
