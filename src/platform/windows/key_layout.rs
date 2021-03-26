@@ -1,4 +1,5 @@
 use std::convert::TryInto;
+use crate::errors::KeyLayoutError;
 
 /// The KeyLayout struct
 pub struct KeyLayout {}
@@ -6,8 +7,8 @@ pub struct KeyLayout {}
 impl KeyLayout {
     
     /// Construct a KeyLayout from a winit Window
-    pub fn new_from_window(_window: &winit::window::Window) -> Self {
-        KeyLayout {}
+    pub fn new_from_window(_window: &winit::window::Window) -> Result<KeyLayout, KeyLayoutError> {
+        Ok(KeyLayout {})
     }
 
     /// Convert a scancode to a String
@@ -61,7 +62,7 @@ impl KeyLayout {
     }
 
     /// Construct a KeyLayout
-    pub fn new() -> Self {
-        KeyLayout {}
+    pub fn new() -> Result<KeyLayout, KeyLayoutError> {
+        Ok(KeyLayout {})
     }
 }
