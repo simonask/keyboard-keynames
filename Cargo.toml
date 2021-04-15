@@ -19,6 +19,8 @@ winit = "0.24.0"
 winapi = "0.3.9"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-xkbcommon = { version = "0.4.0", features = ["x11", "wayland"] }
-xcb = "0.8.0"
+xkbcommon-sys = { git = "https://github.com/Frinksy/rust-xkbcommon-sys.git", features = ["x11"], rev = "14f861dbce70b1cfc8e5d8c1b7b9e00a0c1cb0f8"}
+xcb = "0.9.0"
 wayland-client = "0.28.3"
+libc = "^0.2"
+memmap = "0.7.0"

@@ -3,9 +3,7 @@ use crate::errors::KeyLayoutError;
 /// The KeyLayout struct (does not work on Mac, only Linux and Windows currently)
 pub struct KeyLayout;
 
-
 impl KeyLayout {
-    
     /// Construct a KeyLayout from a winit Window
     pub fn new_from_window(_window: &winit::window::Window) -> Result<KeyLayout, KeyLayoutError> {
         Err(KeyLayoutError::PlatformUnsupportedError)
