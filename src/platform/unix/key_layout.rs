@@ -52,7 +52,7 @@ impl KeyLayout {
 
         let (utf_key, _) = buffer.split_at(key_size.try_into().unwrap());
         let mut output =
-            String::from_utf8_lossy(unsafe { &*(utf_key as *const [i8] as *const [u8]) })
+            String::from_utf8_lossy(unsafe { &*(utf_key as *const [c_char] as *const [u8]) })
                 .into_owned();
         // Remove invisible characters
         output = output.replace(|c: char| c.is_control(), "");
@@ -62,7 +62,7 @@ impl KeyLayout {
             key_size = unsafe { xkb_keysym_get_name(keysym, buffer.as_mut_ptr(), 32) };
 
             let (utf_key, _) = buffer.split_at(key_size.try_into().unwrap());
-            output = String::from_utf8_lossy(unsafe { &*(utf_key as *const [i8] as *const [u8]) })
+            output = String::from_utf8_lossy(unsafe { &*(utf_key as *const [c_char] as *const [u8]) })
                 .into_owned();
         } else {
             output.make_ascii_uppercase();
