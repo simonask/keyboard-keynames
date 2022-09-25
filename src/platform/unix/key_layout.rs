@@ -162,20 +162,24 @@ impl KeyLayout {
 
         let ctx = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
 
-        let keymap = xkb::Keymap::new_from_fd(
-            &ctx,
-            *file_descriptor.borrow(),
-            (*size.borrow()).try_into().unwrap(),
-            KEYMAP_FORMAT_TEXT_V1,
-            KEYMAP_COMPILE_NO_FLAGS,
-        )
+        let keymap = unsafe {
+            xkb::Keymap::new_from_fd(
+                &ctx,
+                *file_descriptor.borrow(),
+                (*size.borrow()).try_into().unwrap(),
+                KEYMAP_FORMAT_TEXT_V1,
+                KEYMAP_COMPILE_NO_FLAGS,
+            )
+        }
+        .ok()
+        .flatten()
         .expect("Failed to create keymap.");
 
         Ok(Self { keymap })
     }
 
     fn _new_x11() -> Result<Self, KeyLayoutError> {
-        let (conn, _) = xcb::base::Connection::connect(None).unwrap();
+        let (conn, _) = xcb::Connection::connect(None).unwrap();
         let mut major_xkb_version_out = 0;
         let mut minor_xkb_version_out = 0;
         let mut base_event_out = 0;
