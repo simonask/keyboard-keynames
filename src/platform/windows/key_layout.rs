@@ -1,11 +1,10 @@
-use std::convert::TryInto;
 use crate::errors::KeyLayoutError;
+use std::convert::TryInto;
 
 /// The KeyLayout struct
 pub struct KeyLayout {}
 
 impl KeyLayout {
-    
     /// Construct a KeyLayout from a winit Window
     pub fn new_from_window(_window: &winit::window::Window) -> Result<KeyLayout, KeyLayoutError> {
         Ok(KeyLayout {})

@@ -1,8 +1,5 @@
 use std::{cell::RefCell, rc::Rc};
-use std::{
-    convert::TryInto,
-    env,
-};
+use std::{convert::TryInto, env};
 use wayland_client::{
     protocol::{
         wl_keyboard::{KeymapFormat, WlKeyboard},
@@ -21,7 +18,6 @@ use crate::errors::KeyLayoutError;
 pub struct KeyLayout {
     keymap: xkb::Keymap,
 }
-
 
 impl KeyLayout {
     /// Construct a KeyLayout from a Winit window
@@ -166,20 +162,24 @@ impl KeyLayout {
 
         let ctx = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
 
-        let keymap = xkb::Keymap::new_from_fd(
-            &ctx,
-            *file_descriptor.borrow(),
-            (*size.borrow()).try_into().unwrap(),
-            KEYMAP_FORMAT_TEXT_V1,
-            KEYMAP_COMPILE_NO_FLAGS,
-        )
+        let keymap = unsafe {
+            xkb::Keymap::new_from_fd(
+                &ctx,
+                *file_descriptor.borrow(),
+                (*size.borrow()).try_into().unwrap(),
+                KEYMAP_FORMAT_TEXT_V1,
+                KEYMAP_COMPILE_NO_FLAGS,
+            )
+        }
+        .ok()
+        .flatten()
         .expect("Failed to create keymap.");
 
         Ok(Self { keymap })
     }
 
     fn _new_x11() -> Result<Self, KeyLayoutError> {
-        let (conn, _) = xcb::base::Connection::connect(None).unwrap();
+        let (conn, _) = xcb::Connection::connect(None).unwrap();
         let mut major_xkb_version_out = 0;
         let mut minor_xkb_version_out = 0;
         let mut base_event_out = 0;
@@ -222,17 +222,14 @@ impl KeyLayout {
 /// Methods for KeyLayout specific to Unix-based systems
 #[cfg(target_os = "linux")]
 pub trait KeyLayoutExtUnix {
-
     /// Construct a KeyLayout explicitly using the Wayland protocol
-    fn new_wayland () -> Result<KeyLayout, KeyLayoutError>;
+    fn new_wayland() -> Result<KeyLayout, KeyLayoutError>;
 
     /// Construct a KeyLayout explicitly using the X11 protocol
     fn new_x11() -> Result<KeyLayout, KeyLayoutError>;
-
 }
 
 impl KeyLayoutExtUnix for KeyLayout {
-
     fn new_wayland() -> Result<KeyLayout, KeyLayoutError> {
         Self::_new_wayland()
     }
@@ -240,5 +237,4 @@ impl KeyLayoutExtUnix for KeyLayout {
     fn new_x11() -> Result<KeyLayout, KeyLayoutError> {
         Self::_new_x11()
     }
-
 }
