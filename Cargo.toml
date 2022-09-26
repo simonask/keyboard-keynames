@@ -1,8 +1,8 @@
 [package]
 name = "keyboard-keynames"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Adam Blanchet <adamblanchet@free.fr>"]
-edition = "2018"
+edition = "2021"
 description = "A crate to query the os for key names for scancodes"
 readme = "README.md"
 repository = "https://gitlab.com/Frinksy/keyboard-keynames/"
@@ -13,14 +13,12 @@ categories = ["game-development", "os"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-winit = "0.25.0"
+winit = "0.27.0"
 
 [target.'cfg(windows)'.dependencies]
-winapi = "0.3.9"
+winapi = { version = "0.3.9", features = ["winuser"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-xkbcommon-sys = { git = "https://github.com/Frinksy/rust-xkbcommon-sys.git", features = ["x11"], rev = "8f615dd6cd90a4ab77c45627830dde49b592b9b5"}
-xcb = "0.9.0"
-wayland-client = "0.28.3"
-libc = "^0.2"
-memmap = "0.7.0"
+xkbcommon = { version = "0.5", features = ["x11", "wayland"] }
+xcb = "1"
+wayland-client = "0.29"
