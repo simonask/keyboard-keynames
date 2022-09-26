@@ -1,8 +1,6 @@
 //! Errors during creation of a KeyLayout
-use std::{
-    error::Error,
-    fmt::{self, Display},
-};
+use std::{error::Error, fmt::{self, Display}};
+
 
 /// Errors during creation of a KeyLayout
 #[derive(Debug)]
@@ -15,6 +13,7 @@ pub enum KeyLayoutError {
     SessionError,
     /// The platform is unsupported
     PlatformUnsupportedError,
+
 }
 
 impl Error for KeyLayoutError {}

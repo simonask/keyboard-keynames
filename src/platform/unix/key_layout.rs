@@ -1,8 +1,4 @@
-use crate::errors::KeyLayoutError;
-use core::ffi::c_void;
-use memmap::MmapOptions;
-use std::os::unix::io::FromRawFd;
-use std::{cell::RefCell, fs::File, os::raw::c_char, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 use std::{convert::TryInto, env};
 use wayland_client::{
     protocol::{
@@ -11,19 +7,16 @@ use wayland_client::{
     },
     DispatchData, Main,
 };
-use xkbcommon_sys::xkb_x11_setup_xkb_extension;
-use xkbcommon_sys::{
-    xkb_context, xkb_context_new, xkb_keymap, xkb_keymap_format::XKB_KEYMAP_FORMAT_TEXT_v1,
-    xkb_keysym_get_name, xkb_state_key_get_one_sym, xkb_state_key_get_utf8,
-    xkb_x11_get_core_keyboard_device_id, XKB_CONTEXT_NO_FLAGS, XKB_KEYMAP_COMPILE_NO_FLAGS,
-    XKB_X11_MIN_MAJOR_XKB_VERSION, XKB_X11_MIN_MINOR_XKB_VERSION,
-    XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
-};
-use xkbcommon_sys::{xkb_keymap_new_from_buffer, xkb_x11_keymap_new_from_device};
+use xkb::x11::{MIN_MAJOR_XKB_VERSION, MIN_MINOR_XKB_VERSION};
+use xkbcommon::xkb;
+
+use xkbcommon::xkb::{KEYMAP_COMPILE_NO_FLAGS, KEYMAP_FORMAT_TEXT_V1};
+
+use crate::errors::KeyLayoutError;
 
 /// The KeyLayout struct
 pub struct KeyLayout {
-    keymap: *mut xkb_keymap,
+    keymap: xkb::Keymap,
 }
 
 impl KeyLayout {
@@ -38,32 +31,21 @@ impl KeyLayout {
 
     /// Convert a scancode to a String
     pub fn get_key_as_string(&self, scancode: u32) -> String {
-        let state = unsafe { xkbcommon_sys::xkb_state_new(self.keymap) };
+        let state = xkb::State::new(&self.keymap);
 
         // Offset of 8 between evdev scancodes and xkb scancodes
 
         // Get keysym from key
-        let keysym = unsafe { xkb_state_key_get_one_sym(state, scancode + 8) };
+        let keysym = state.key_get_one_sym(scancode + 8);
 
-        let mut buffer: [c_char; 32] = [0; 32];
+        let mut output = state.key_get_utf8(scancode + 8);
 
-        let mut key_size =
-            unsafe { xkb_state_key_get_utf8(state, scancode + 8, buffer.as_mut_ptr(), 32) };
-
-        let (utf_key, _) = buffer.split_at(key_size.try_into().unwrap());
-        let mut output =
-            String::from_utf8_lossy(unsafe { &*(utf_key as *const [c_char] as *const [u8]) })
-                .into_owned();
         // Remove invisible characters
         output = output.replace(|c: char| c.is_control(), "");
 
         // Fallback to longer name if needed
         if output.trim().is_empty() {
-            key_size = unsafe { xkb_keysym_get_name(keysym, buffer.as_mut_ptr(), 32) };
-
-            let (utf_key, _) = buffer.split_at(key_size.try_into().unwrap());
-            output = String::from_utf8_lossy(unsafe { &*(utf_key as *const [c_char] as *const [u8]) })
-                .into_owned();
+            output = xkb::keysym_get_name(keysym);
         } else {
             output.make_ascii_uppercase();
         }
@@ -101,9 +83,9 @@ impl KeyLayout {
             }
         });
 
-        if !event_queue.sync_roundtrip(&mut (), |_, _, _| {}).is_ok() {
-            return Err(KeyLayoutError::WaylandError);
-        }
+        event_queue
+            .sync_roundtrip(&mut (), |_, _, _| {})
+            .expect("Error during event queue roundtrip");
 
         // Bind to wl_seat if available
         // Find wl_seat tuple
@@ -178,56 +160,43 @@ impl KeyLayout {
 
         // Construct keymap from file descriptor
 
-        let ctx = unsafe { xkb_context_new(XKB_CONTEXT_NO_FLAGS) };
+        let ctx = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
 
-        let keymap_file = unsafe { File::from_raw_fd(*file_descriptor.borrow()) };
+        let keymap = xkb::Keymap::new_from_fd(
+            &ctx,
+            *file_descriptor.borrow(),
+            (*size.borrow()).try_into().unwrap(),
+            KEYMAP_FORMAT_TEXT_V1,
+            KEYMAP_COMPILE_NO_FLAGS,
+        )
+        .expect("Failed to create keymap.");
 
-        let map = unsafe {
-            MmapOptions::new()
-                .len(*size.borrow() as usize)
-                .map(&keymap_file)
-                .unwrap()
-        };
-
-        let keymap = unsafe {
-            xkb_keymap_new_from_buffer(
-                ctx,
-                map.as_ptr() as *const _,
-                (*size.borrow() - 1).try_into().unwrap(),
-                XKB_KEYMAP_FORMAT_TEXT_v1,
-                XKB_KEYMAP_COMPILE_NO_FLAGS,
-            )
-        };
         Ok(Self { keymap })
     }
 
     fn _new_x11() -> Result<Self, KeyLayoutError> {
         let (conn, _) = xcb::base::Connection::connect(None).unwrap();
-        let conn = conn.into_raw_conn() as *mut c_void;
         let mut major_xkb_version_out = 0;
         let mut minor_xkb_version_out = 0;
         let mut base_event_out = 0;
         let mut base_error_out = 0;
 
-        let _ = unsafe {
-            xkb_x11_setup_xkb_extension(
-                conn,
-                XKB_X11_MIN_MAJOR_XKB_VERSION.try_into().unwrap(),
-                XKB_X11_MIN_MINOR_XKB_VERSION.try_into().unwrap(),
-                XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
-                &mut major_xkb_version_out,
-                &mut minor_xkb_version_out,
-                &mut base_event_out,
-                &mut base_error_out,
-            )
-        };
+        let _ = xkb::x11::setup_xkb_extension(
+            &conn,
+            MIN_MAJOR_XKB_VERSION,
+            MIN_MINOR_XKB_VERSION,
+            xkb::x11::SetupXkbExtensionFlags::NoFlags,
+            &mut major_xkb_version_out,
+            &mut minor_xkb_version_out,
+            &mut base_event_out,
+            &mut base_error_out,
+        );
 
-        let device_id = unsafe { xkb_x11_get_core_keyboard_device_id(conn) };
+        let device_id = xkb::x11::get_core_keyboard_device_id(&conn);
 
-        let ctx = unsafe { xkb_context_new(XKB_CONTEXT_NO_FLAGS) };
+        let ctx = xkb::Context::new(xkb::CONTEXT_NO_FLAGS);
 
-        let keymap =
-            unsafe { xkb_x11_keymap_new_from_device(ctx as *mut xkb_context, conn, device_id, 0) };
+        let keymap = xkb::x11::keymap_new_from_device(&ctx, &conn, device_id, 0);
 
         Ok(KeyLayout { keymap })
     }
@@ -238,7 +207,7 @@ impl KeyLayout {
         match env::var("XDG_SESSION_TYPE") {
             Ok(session_type) => match session_type.as_str() {
                 "wayland" => Self::_new_wayland(),
-                //"x11" => Self::_new_x11(),
+                "x11" => Self::_new_x11(),
                 _ => Err(KeyLayoutError::SessionError),
             },
             Err(_e) => Err(KeyLayoutError::SessionError),
